@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ghost Ai</title>
+<style>
+body { background: #0a0a23; color: #e0e6f8; font-family: Arial, sans-serif; margin: 0; padding: 0; }
+header { background: #111133; color: #00aaff; padding: 1rem; text-align: center; font-size: 2rem; letter-spacing: 2px; }
+.main-flex { display: flex; max-width: 900px; margin: 2rem auto; }
+#sidebar { width: 140px; background: #181840; height: 400px; overflow-y: auto; border-radius: 8px 0 0 8px; padding: 1rem 0 1rem 1rem; margin-right: 0; }
+#sidebar button { width: 90%; margin-bottom: 0.5rem; background: #222244; color: #e0e6f8; border: none; border-radius: 5px; padding: 0.5rem; cursor: pointer; }
+#sidebar button.active, #sidebar button:hover { background: #00aaff; color: #fff; }
+.container { flex: 1; background: #181840; border-radius: 0 10px 10px 0; box-shadow: 0 0 10px #0008; padding: 2rem; min-width: 260px; }
+.hidden { display: none; }
+input, button { width: 100%; padding: 0.7rem; margin: 0.5rem 0; border: none; border-radius: 5px; font-size: 1rem; }
+input { background: #222244; color: #e0e6f8; }
+button { background: #00aaff; color: #fff; cursor: pointer; }
+button:hover { background: #0088cc; }
+.chat-box { background: #222244; height: 250px; overflow-y: auto; border-radius: 5px; padding: 1rem; margin-bottom: 1rem; font-size: 1rem; }
+.chat-msg { margin-bottom: 0.7rem; }
+.user { color: #00aaff; }
+.ai { color: #e0e6f8; }
+.logout-btn { background: #333366; color: #fff; margin-top: 1rem; }
+.footer { text-align: center; color: #888; margin: 2rem 0 1rem 0; font-size: 0.9rem; }
+/* Console styles */
+.console-section { margin-top:2rem; background:#222244; padding:0; border-radius:8px; }
+.console-header { cursor:pointer; background:#181840; color:#00ff99; padding:0.7rem 1rem; font-size:1.1rem; border-radius:8px 8px 0 0; user-select:none; }
+.console-header:hover { background:#00aaff; color:#fff; }
+.console-content { display:none; padding:1rem; border-radius:0 0 8px 8px; }
+.console-section.open .console-content { display:block; }
+.console-section.open .console-header { background:#00aaff; color:#fff; }
+pre, textarea, input { background:#181840; color:#fff; }
+textarea { width:100%; }
+input[type=text], input[type=password] { width:100%; }
+.console-section button { width:auto; margin-top:0.5rem; }
+#admin-users-table { width:100%; border-collapse:collapse; margin-top:1rem; }
+#admin-users-table th, #admin-users-table td { border:1px solid #333366; padding:0.4rem; text-align:left; }
+#admin-users-table th { background:#222244; color:#00aaff; }
+#admin-users-table td { background:#181840; }
+.admin-action-btn { background:#00aaff; color:#fff; border:none; border-radius:4px; padding:0.3rem 0.7rem; cursor:pointer; margin-right:0.3rem; }
+.admin-action-btn:hover { background:#0088cc; }
+.code-editor { width:100%; height:200px; font-family:monospace; font-size:1em; background:#181840; color:#fff; border-radius:6px; border:1px solid #333366; margin-bottom:0.5rem; }
+.broadcast-box { margin-top:1rem; }
+/* Notification styles */
+#notification-btn { position:absolute; right:2.5rem; top:2.5rem; background:none; border:none; cursor:pointer; font-size:1.5rem; color:#00aaff; }
+#notification-btn .notif-dot { background:#ff4444; color:#fff; border-radius:50%; font-size:0.8rem; padding:0 6px; position:absolute; top:-8px; right:-8px; }
+#notification-list { position:fixed; right:2.5rem; top:4.2rem; background:#222244; color:#fff; border-radius:8px; box-shadow:0 2px 12px #000a; min-width:260px; z-index:1000; display:none; }
+#notification-list ul { list-style:none; margin:0; padding:0.5rem 0; }
+#notification-list li { padding:0.7rem 1rem; border-bottom:1px solid #333366; }
+#notification-list li:last-child { border-bottom:none; }
+#notification-list .notif-title { font-weight:bold; color:#00aaff; }
+#notification-list .notif-time { font-size:0.85em; color:#aaa; float:right; }
+#notification-list .notif-close { float:right; color:#ff4444; cursor:pointer; margin-left:1rem; }
+#shutdown-banner { background:#ff4444; color:#fff; padding:1rem; text-align:center; border-radius:8px; font-size:1.2rem; margin-bottom:1rem; }
+</style>
+</head>
+<body>
+<header>Ghost Ai</header>
+<button id="notification-btn" title="Notifications" onclick="toggleNotifications()" style="display:none;">
+&#128276;
+<span id="notif-unread" class="notif-dot" style="display:none;">0</span>
+</button>
+<div id="notification-list">
+<ul id="notif-list-ul"></ul>
+</div>
+<div class="main-flex">
+<div id="sidebar" class="hidden">
+<button onclick="startNewSession()">+ New Chat</button>
+<div id="session-list"></div>
+<button onclick="deleteSelectedChat()" style="margin-top:10px; background:#ff4444;">Delete Selected Chat</button>
+</div>
+<div class="container">
+<div id="auth-section">
+<h2>Login</h2>
+<input type="text" id="login-username" placeholder="Username" />
+<input type="password" id="login-password" placeholder="Password" />
+<button onclick="login()">Login</button>
+<p style="text-align:center;">or</p>
+<h2>Register</h2>
+<input type="text" id="register-username" placeholder="Username" />
+<input type="password" id="register-password" placeholder="Password" />
+<button onclick="register()">Register</button>
+<div id="auth-msg" style="color:#ff6666; text-align:center;"></div>
+</div>
+<div id="chat-section" class="hidden">
+<div style="text-align:right;">
+<button class="logout-btn" onclick="logout()">Logout</button>
+</div>
+<h2 id="chat-title">Chat with Ghost Ai</h2>
+<div id="shutdown-banner" style="display:none;"></div>
+<div class="chat-box" id="chat-box"></div>
+<input type="text" id="chat-input" placeholder="Type your question..." onkeydown="if(event.key==='Enter'){sendMessage();}" />
+<button onclick="sendMessage()">Send</button>
+</div>
+<!-- Owner Console Section -->
+<div id="owner-console" class="console-section hidden">
+<div class="console-header" onclick="toggleConsole('owner-console')">Owner Console</div>
+<div class="console-content">
+<h3>Owner Tools</h3>
+<div id="owner-summary"></div>
+<div style="margin-top:1rem;">
+<label>Export/Import All Data:</label><br />
+<button onclick="exportAllData()">Export Data</button>
+<input type="file" id="import-file" style="display:none" onchange="importAllData(event)" />
+<button onclick="document.getElementById('import-file').click()">Import Data</button>
+</div>
+<div style="margin-top:1rem;">
+<label>Security Logs:</label>
+<pre id="owner-logs" style="height:80px;overflow:auto;"></pre>
+<button onclick="clearLogs()">Clear Logs</button>
+</div>
+<div class="broadcast-box">
+<label>Broadcast Message to All Users:</label>
+<input id="broadcast-msg" type="text" placeholder="Message" />
+<button onclick="broadcastMessage()">Send</button>
+</div>
+<div style="margin-top:1rem;">
+<label>Edit Site Code (HTML/JS):</label>
+<textarea id="site-code-editor" class="code-editor"></textarea>
+<button onclick="saveSiteCode()">Save Code</button>
+<button onclick="loadDefaultCode()">Load Default</button>
+<span id="code-save-status"></span>
+</div>
+<div style="margin-top:1rem;">
+<label>Shutdown Site with Timer:</label><br />
+<input id="shutdown-mins" type="number" min="1" max="120" placeholder="Minutes" style="width:80px;display:inline-block;" />
+<button onclick="startShutdown()">Start Shutdown</button>
+<button onclick="cancelShutdown()">Cancel Shutdown</button>
+<button onclick="restartShutdown()">Restart Site</button>
+<span id="shutdown-status"></span>
+</div>
+</div>
+</div>
+<!-- Admin Console Section -->
+<div id="admin-console" class="console-section hidden">
+<div class="console-header" onclick="toggleConsole('admin-console')">Admin Console</div>
+<div class="console-content">
+<h3>Admin Tools</h3>
+<div id="admin-summary"></div>
+<table id="admin-users-table">
+<thead>
+<tr><th>Username</th><th>Password</th><th>Actions</th></tr>
+</thead>
+<tbody id="admin-users-tbody"></tbody>
+</table>
+<div style="margin-top:1rem;">
+<label for="admin-reset-user">Reset Password for:</label>
+<select id="admin-reset-user"></select>
+<input id="admin-reset-pass" type="text" placeholder="New Password" />
+<button onclick="adminResetPassword()">Reset</button>
+</div>
+</div>
+</div>
+<!-- Developer Console Section -->
+<div id="dev-console" class="console-section hidden">
+<div class="console-header" onclick="toggleConsole('dev-console')">Developer Console</div>
+<div class="console-content">
+<h3>Developer Tools</h3>
+<pre id="dev-info"></pre>
+<div style="margin-top:1rem;">
+<label for="user-select">View chat history for user:</label>
+<select id="user-select" style="margin:0 0.5rem;"></select>
+<button onclick="loadUserHistory()">Load</button>
+</div>
+<textarea id="user-history" style="height:120px;margin-top:0.5rem;"></textarea>
+<button onclick="saveUserHistory()">Save Changes</button>
+<div style="margin-top:1rem;">
+<label for="welcome-edit">Edit Welcome Message:</label>
+<textarea id="welcome-edit" style="height:40px;"></textarea>
+<button onclick="saveWelcomeMessage()">Save Welcome</button>
+</div>
+<div style="margin-top:1rem;">
+<label>Logs:</label>
+<pre id="dev-logs" style="height:80px;overflow:auto;"></pre>
+<button onclick="clearLogs()">Clear Logs</button>
+</div>
+<div style="margin-top:1rem;">
+<label for="dev-js-console">Run JS Command:</label>
+<input id="dev-js-console" type="text" placeholder="Type JavaScript and press Enter" />
+<pre id="dev-js-output" style="height:40px;overflow:auto;margin-top:0.5rem;"></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="footer">&copy; 2025 Ghost Ai. All rights reserved.</div>
+<script>
+// Default users and admins
+(function() {
+const users = JSON.parse(localStorage.getItem('ghostai_users') || '{}');
+users['EthanPieples'] = 'Superman0202';
+users['jackiscool'] = 'jackiscool2';
+users['EthanDevPieples'] = 'Superman0202';
+localStorage.setItem('ghostai_users', JSON.stringify(users));
+})();
+const ownerUser = 'EthanDevPieples';
+const adminUsers = ['EthanPieples', 'admin', 'jackiscool', 'EthanDevPieples'];
+const devUsers = ['EthanPieples', 'admin', 'developer', 'jackiscool', 'EthanDevPieples'];
+
+// Welcome message
+function getWelcomeMessage() {
+return localStorage.getItem('ghostai_welcome') || 'Chat with Ghost Ai';
+}
+function setWelcomeMessage(msg) {
+localStorage.setItem('ghostai_welcome', msg);
+}
+function saveWelcomeMessage() {
+setWelcomeMessage(document.getElementById('welcome-edit').value);
+logAction('Welcome message updated');
+alert('Welcome message updated!');
+document.getElementById('chat-title').innerText = getWelcomeMessage();
+}
+
+// User/session helpers
+function getUsers() {
+return JSON.parse(localStorage.getItem('ghostai_users') || '{}');
+}
+function setUsers(users) {
+localStorage.setItem('ghostai_users', JSON.stringify(users));
+}
+function getCurrentUser() {
+return localStorage.getItem('ghostai_current_user');
+}
+function setCurrentUser(user) {
+localStorage.setItem('ghostai_current_user', user);
+}
+function clearCurrentUser() {
+localStorage.removeItem('ghostai_current_user');
+}
+// Session helpers
+function getSessions(user) {
+return JSON.parse(localStorage.getItem('ghostai_sessions_' + user) || '[]');
+}
+function setSessions(user, sessions) {
+localStorage.setItem('ghostai_sessions_' + user, JSON.stringify(sessions));
+}
+let currentSessionIdx = 0;
+
+// Auth functions
+function login() {
+const username = document.getElementById('login-username').value.trim();
+const password = document.getElementById('login-password').value;
+const users = getUsers();
+if (users[username] && users[username] === password) {
+setCurrentUser(username);
+logAction('User ' + username + ' logged in');
+showChat();
+} else {
+document.getElementById('auth-msg').innerText = 'Invalid login.';
+}
+}
+function register() {
+const username = document.getElementById('register-username').value.trim();
+const password = document.getElementById('register-password').value;
+const users = getUsers();
+if (!username || !password) {
+document.getElementById('auth-msg').innerText = 'Please enter username and password.';
+return;
+}
+if (users[username]) {
+document.getElementById('auth-msg').innerText = 'Username already exists.';
+return;
+}
+users[username] = password;
+setUsers(users);
+setCurrentUser(username);
+logAction('User ' + username + ' registered');
+showChat();
+}
+function logout() {
+clearCurrentUser();
+document.getElementById('chat-section').classList.add('hidden');
+document.getElementById('auth-section').classList.remove('hidden');
+document.getElementById('sidebar').classList.add('hidden');
+document.getElementById('dev-console').classList.add('hidden');
+document.getElementById('admin-console').classList.add('hidden');
+document.getElementById('owner-console').classList.add('hidden');
+document.getElementById('auth-msg').innerText = '';
+document.getElementById('notification-btn').style.display = 'none';
+hideNotifications();
+}
+// Chat/session UI
+function showChat() {
+document.getElementById('auth-section').classList.add('hidden');
+document.getElementById('chat-section').classList.remove('hidden');
+document.getElementById('sidebar').classList.remove('hidden');
+renderSessionList();
+loadChat();
+// Show consoles for correct users
+const user = getCurrentUser();
+// Owner Console
+if (user === ownerUser) {
+document.getElementById('owner-console').classList.remove('hidden');
+renderOwnerConsole();
+} else {
+document.getElementById('owner-console').classList.add('hidden');
+}
+// Admin Console
+if (adminUsers.includes(user)) {
+document.getElementById('admin-console').classList.remove('hidden');
+renderAdminConsole();
+} else {
+document.getElementById('admin-console').classList.add('hidden');
+}
+// Dev Console
+if (devUsers.includes(user)) {
+document.getElementById('dev-console').classList.remove('hidden');
+document.getElementById('dev-info').innerText = 'Welcome, ' + user + '!\nYou have access to developer tools.';
+populateUserSelect();
+document.getElementById('welcome-edit').value = getWelcomeMessage();
+showLogs();
+// In-page JS console event
+const devJsInput = document.getElementById('dev-js-console');
+if (devJsInput && !devJsInput.hasListener) {
+devJsInput.addEventListener('keydown', function(e) {
+if (e.key === 'Enter') {
+try {
+const result = eval(devJsInput.value);
+document.getElementById('dev-js-output').innerText = String(result);
+logAction('Ran JS command: ' + devJsInput.value);
+} catch (err) {
+document.getElementById('dev-js-output').innerText = 'Error: ' + err;
+}
+}
+});
+devJsInput.hasListener = true;
+}
+} else {
+document.getElementById('dev-console').classList.add('hidden');
+}
+// Show notification button
+document.getElementById('notification-btn').style.display = 'block';
+updateNotifButton();
+checkShutdownStatus();
+}
+function startNewSession() {
+const user = getCurrentUser();
+let sessions = getSessions(user);
+const name = prompt('Enter a name for this chat session:') || 'Session ' + (sessions.length + 1);
+sessions.push({ name, messages: [] });
+setSessions(user, sessions);
+currentSessionIdx = sessions.length - 1;
+renderSessionList();
+loadChat();
+}
+function renderSessionList() {
+const user = getCurrentUser();
+const sessions = getSessions(user);
+const list = document.getElementById('session-list');
+list.innerHTML = '';
+sessions.forEach((s, i) => {
+const btn = document.createElement('button');
+btn.textContent = s.name;
+btn.className = (i === currentSessionIdx) ? 'active' : '';
+btn.onclick = function() {
+currentSessionIdx = i;
+loadChat();
+};
+list.appendChild(btn);
+});
+}
+function loadChat() {
+const user = getCurrentUser();
+const sessions = getSessions(user);
+const chatBox = document.getElementById('chat-box');
+chatBox.innerHTML = '';
+if (!sessions.length) {
+document.getElementById('chat-title').innerText = getWelcomeMessage();
+return;
+}
+document.getElementById('chat-title').innerText = sessions[currentSessionIdx].name;
+const history = sessions[currentSessionIdx].messages;
+history.forEach(msg => {
+const div = document.createElement('div');
+div.className = 'chat-msg';
+div.innerHTML = `<span class="${msg.sender}"><b>${msg.sender === 'user' ? user : 'Ghost Ai'}:</b></span> ${msg.text}`;
+chatBox.appendChild(div);
+});
+chatBox.scrollTop = chatBox.scrollHeight;
+renderSessionList();
+}
+function sendMessage() {
+const input = document.getElementById('chat-input');
+const text = input.value.trim();
+if (!text) return;
+const user = getCurrentUser();
+let sessions = getSessions(user);
+if (!sessions.length) {
+startNewSession();
+sessions = getSessions(user);
+}
+sessions[currentSessionIdx].messages.push({ sender: 'user', text });
+const aiResponse = getAIResponse(text);
+sessions[currentSessionIdx].messages.push({ sender: 'ai', text: aiResponse });
+setSessions(user, sessions);
+input.value = '';
+loadChat();
+logAction('User ' + user + ' sent a message');
+}
+function getAIResponse(question) {
+return "I'm Ghost Ai. I received your question: '" + question + "'. How can I help you further?";
+}
+// Developer Console Functions
+function populateUserSelect() {
+const users = Object.keys(getUsers());
+const select = document.getElementById('user-select');
+select.innerHTML = '';
+users.forEach(u => {
+const opt = document.createElement('option');
+opt.value = u;
+opt.text = u;
+select.appendChild(opt);
+});
+}
+function loadUserHistory() {
+const user = document.getElementById('user-select').value;
+const sessions = getSessions(user);
+let lines = [];
+sessions.forEach((session, idx) => {
+lines.push('[' + session.name + ']');
+session.messages.forEach(m => {
+lines.push(m.sender + ': ' + m.text);
+});
+lines.push('');
+});
+document.getElementById('user-history').value = lines.join('\n');
+}
+function saveUserHistory() {
+const user = document.getElementById('user-select').value;
+const lines = document.getElementById('user-history').value.split('\n');
+let sessions = [];
+let currentSession = null;
+lines.forEach(line => {
+if (line.startsWith('[') && line.endsWith(']')) {
+if (currentSession) sessions.push(currentSession);
+currentSession = { name: line.slice(1, -1), messages: [] };
+} else if (line.includes(':')) {
+const idx = line.indexOf(':');
+const sender = line.slice(0, idx).trim();
+const text = line.slice(idx + 1).trim();
+if (currentSession) currentSession.messages.push({ sender, text });
+}
+});
+if (currentSession) sessions.push(currentSession);
+setSessions(user, sessions);
+logAction('Chat history updated for ' + user);
+alert('Chat history updated for ' + user);
+}
+// Log functions
+function logAction(action) {
+const logs = JSON.parse(localStorage.getItem('ghostai_logs') || '[]');
+logs.push(new Date().toLocaleString() + ': ' + action);
+localStorage.setItem('ghostai_logs', JSON.stringify(logs));
+}
+function showLogs() {
+const logs = JSON.parse(localStorage.getItem('ghostai_logs') || '[]');
+document.getElementById('dev-logs').innerText = logs.slice(-50).join('\n');
+if (document.getElementById('owner-logs')) {
+document.getElementById('owner-logs').innerText = logs.slice(-100).join('\n');
+}
+}
+function clearLogs() {
+localStorage.setItem('ghostai_logs', '[]');
+showLogs();
+}
+// Admin Console Functions
+function renderAdminConsole() {
+// Summary
+const users = getUsers();
+let totalSessions = 0;
+Object.keys(users).forEach(u => {
+totalSessions += getSessions(u).length;
+});
+document.getElementById('admin-summary').innerHTML =
+`<b>Total Users:</b> ${Object.keys(users).length} &nbsp; <b>Total Sessions:</b> ${totalSessions}`;
+// Users table
+const tbody = document.getElementById('admin-users-tbody');
+tbody.innerHTML = '';
+const currentUser = getCurrentUser();
+Object.keys(users).forEach(u => {
+const tr = document.createElement('tr');
+tr.innerHTML = `<td>${u}</td><td>${users[u]}</td><td></td>`;
+// Actions
+const td = tr.children[2];
+if (u !== currentUser) {
+const delBtn = document.createElement('button');
+delBtn.textContent = 'Delete';
+delBtn.className = 'admin-action-btn';
+delBtn.onclick = function() {
+if (confirm('Delete user ' + u + '?')) {
+deleteUser(u);
+}
+};
+td.appendChild(delBtn);
+}
+tbody.appendChild(tr);
+});
+// Reset password select
+const resetSel = document.getElementById('admin-reset-user');
+resetSel.innerHTML = '';
+Object.keys(users).forEach(u => {
+const opt = document.createElement('option');
+opt.value = u;
+opt.text = u;
+resetSel.appendChild(opt);
+});
+}
+function deleteUser(username) {
+const users = getUsers();
+delete users[username];
+setUsers(users);
+localStorage.removeItem('ghostai_sessions_' + username);
+logAction('Admin deleted user ' + username);
+renderAdminConsole();
+alert('User ' + username + ' deleted.');
+}
+function adminResetPassword() {
+const user = document.getElementById('admin-reset-user').value;
+const newPass = document.getElementById('admin-reset-pass').value;
+if (!newPass) {
+alert('Enter a new password.');
+return;
+}
+const users = getUsers();
+users[user] = newPass;
+setUsers(users);
+logAction('Admin reset password for ' + user);
+renderAdminConsole();
+alert('Password reset for ' + user);
+document.getElementById('admin-reset-pass').value = '';
+}
+// Owner Console Functions
+function renderOwnerConsole() {
+// System stats
+const users = getUsers();
+let totalSessions = 0;
+let totalMessages = 0;
+Object.keys(users).forEach(u => {
+const sessions = getSessions(u);
+totalSessions += sessions.length;
+sessions.forEach(s => totalMessages += s.messages.length);
+});
+let used = 0;
+for (let k in localStorage) {
+if (localStorage.hasOwnProperty(k)) used += (localStorage[k].length || 0);
+}
+document.getElementById('owner-summary').innerHTML =
+`<b>Total Users:</b> ${Object.keys(users).length} &nbsp; <b>Total Sessions:</b> ${totalSessions} &nbsp; <b>Total Messages:</b> ${totalMessages} &nbsp; <b>Storage:</b> ${(used/1024).toFixed(1)} KB`;
+showLogs();
+// Load code editor
+if (document.getElementById('site-code-editor')) {
+document.getElementById('site-code-editor').value = getSiteCode();
+document.getElementById('code-save-status').innerText = '';
+}
+// Shutdown status
+updateShutdownStatus();
+}
+function getSiteCode() {
+return localStorage.getItem('ghostai_site_code') || window._defaultSiteCode || '';
+}
+function saveSiteCode() {
+const code = document.getElementById('site-code-editor').value;
+localStorage.setItem('ghostai_site_code', code);
+document.getElementById('code-save-status').innerText = ' (Saved!)';
+logAction('Owner saved site code');
+}
+function loadDefaultCode() {
+if (window._defaultSiteCode) {
+document.getElementById('site-code-editor').value = window._defaultSiteCode;
+document.getElementById('code-save-status').innerText = ' (Loaded default)';
+}
+}
+function exportAllData() {
+const data = {};
+for (let k in localStorage) {
+if (localStorage.hasOwnProperty(k)) data[k] = localStorage[k];
+}
+const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+const url = URL.createObjectURL(blob);
+const a = document.createElement('a');
+a.href = url;
+a.download = 'ghostai_backup.json';
+a.click();
+URL.revokeObjectURL(url);
+logAction('Owner exported all data');
+}
+function importAllData(event) {
+const file = event.target.files[0];
+if (!file) return;
+const reader = new FileReader();
+reader.onload = function(e) {
+try {
+const data = JSON.parse(e.target.result);
+for (let k in data) {
+localStorage.setItem(k, data[k]);
+}
+alert('Data imported! Please reload the page.');
+logAction('Owner imported all data');
+} catch (err) {
+alert('Import failed: ' + err);
+}
+};
+reader.readAsText(file);
+}
+function broadcastMessage() {
+const msg = document.getElementById('broadcast-msg').value;
+if (!msg) return alert('Enter a message.');
+addNotification('Broadcast', msg);
+logAction('Owner broadcasted: ' + msg);
+alert('Broadcast sent!');
+document.getElementById('broadcast-msg').value = '';
+}
+// Notification system
+function getNotifications() {
+const user = getCurrentUser();
+return JSON.parse(localStorage.getItem('ghostai_notif_' + user) || '[]');
+}
+function setNotifications(list) {
+const user = getCurrentUser();
+localStorage.setItem('ghostai_notif_' + user, JSON.stringify(list));
+}
+function addNotification(title, msg, type) {
+// type: 'info', 'warning', 'shutdown', etc.
+const user = getCurrentUser();
+const allUsers = Object.keys(getUsers());
+const notif = {
+title: title,
+msg: msg,
+time: new Date().toLocaleString(),
+unread: true,
+type: type || 'info'
+};
+// Send to all users
+allUsers.forEach(u => {
+let list = JSON.parse(localStorage.getItem('ghostai_notif_' + u) || '[]');
+list.push(notif);
+localStorage.setItem('ghostai_notif_' + u, JSON.stringify(list));
+});
+updateNotifButton();
+}
+function updateNotifButton() {
+const user = getCurrentUser();
+if (!user) return;
+const notifs = getNotifications();
+const unread = notifs.filter(n => n.unread).length;
+const dot = document.getElementById('notif-unread');
+if (unread > 0) {
+dot.innerText = unread;
+dot.style.display = 'inline-block';
+} else {
+dot.style.display = 'none';
+}
+}
+function toggleNotifications() {
+const listDiv = document.getElementById('notification-list');
+if (listDiv.style.display === 'block') {
+hideNotifications();
+return;
+}
+renderNotifications();
+listDiv.style.display = 'block';
+}
+function hideNotifications() {
+document.getElementById('notification-list').style.display = 'none';
+}
+function renderNotifications() {
+const notifs = getNotifications();
+const ul = document.getElementById('notif-list-ul');
+ul.innerHTML = '';
+notifs.slice().reverse().forEach((n, idx) => {
+const li = document.createElement('li');
+li.innerHTML = `<span class='notif-title'>${n.title}</span> <span class='notif-time'>${n.time}</span><br>${n.msg}`;
+if (n.type === 'shutdown') li.style.background = '#ff4444';
+ul.appendChild(li);
+});
+// Mark all as read
+notifs.forEach(n => n.unread = false);
+setNotifications(notifs);
+updateNotifButton();
+}
+// Shutdown system
+function startShutdown() {
+const mins = parseInt(document.getElementById('shutdown-mins').value);
+if (!mins || mins < 1) return alert('Enter minutes (1-120)');
+const until = Date.now() + mins * 60000;
+localStorage.setItem('ghostai_shutdown_until', until);
+addNotification('Shutdown Warning', `Site will shut down in ${mins} minute(s)!`, 'shutdown');
+updateShutdownStatus();
+checkShutdownStatus();
+}
+function cancelShutdown() {
+localStorage.removeItem('ghostai_shutdown_until');
+addNotification('Shutdown Cancelled', 'Site shutdown has been cancelled.', 'info');
+updateShutdownStatus();
+checkShutdownStatus();
+}
+function restartShutdown() {
+localStorage.removeItem('ghostai_shutdown_until');
+addNotification('Site Restarted', 'Site is now available again.', 'info');
+updateShutdownStatus();
+checkShutdownStatus();
+}
+function updateShutdownStatus() {
+const until = parseInt(localStorage.getItem('ghostai_shutdown_until') || '0');
+const status = document.getElementById('shutdown-status');
+if (!status) return;
+if (until && until > Date.now()) {
+const mins = Math.ceil((until - Date.now()) / 60000);
+status.innerText = `Shutdown in ${mins} minute(s)`;
+} else {
+status.innerText = '';
+}
+}
+function checkShutdownStatus() {
+const until = parseInt(localStorage.getItem('ghostai_shutdown_until') || '0');
+const banner = document.getElementById('shutdown-banner');
+if (until && until > Date.now()) {
+const mins = Math.ceil((until - Date.now()) / 60000);
+banner.innerText = `Site will shut down in ${mins} minute(s)!`;
+banner.style.display = 'block';
+setTimeout(checkShutdownStatus, 10000);
+} else if (until && until <= Date.now()) {
+banner.innerText = 'Site is currently shut down. Please wait or contact the owner.';
+banner.style.display = 'block';
+document.getElementById('chat-input').disabled = true;
+document.getElementById('chat-input').placeholder = 'Site is shut down.';
+document.querySelector('#chat-section button[onclick="sendMessage()"]')?.setAttribute('disabled', 'disabled');
+} else {
+banner.style.display = 'none';
+document.getElementById('chat-input').disabled = false;
+document.getElementById('chat-input').placeholder = 'Type your question...';
+document.querySelector('#chat-section button[onclick="sendMessage()"]')?.removeAttribute('disabled');
+}
+}
+// Save default code for owner editor
+window._defaultSiteCode = document.documentElement.outerHTML;
+// On load, set up default user and show chat if logged in
+window.onload = function() {
+if (getCurrentUser()) {
+showChat();
+}
+};
+// Hide notifications when clicking outside
+window.addEventListener('click', function(e) {
+if (!e.target.closest('#notification-list') && !e.target.closest('#notification-btn')) {
+hideNotifications();
+}
+});
+// Update notification button and shutdown status every 10s
+setInterval(function() {
+updateNotifButton();
+checkShutdownStatus();
+}, 10000);
+
+// New functions for delete selected chat
+function deleteSelectedChat() {
+const user = getCurrentUser();
+let sessions = getSessions(user);
+if (sessions.length === 0) {
+alert('No chats to delete.');
+return;
+}
+if (sessions.length === 1) {
+// If only one session, delete it
+if (confirm('Delete this chat session?')) {
+sessions = [];
+}
+} else {
+// Multiple sessions, ask which one to delete
+const sessionNames = sessions.map(s => s.name).join('\n');
+const sessionToDelete = prompt('Enter the name of the chat to delete:\n' + sessionNames);
+if (sessionToDelete) {
+sessions = sessions.filter(s => s.name !== sessionToDelete);
+} else {
+return;
+}
+}
+setSessions(user, sessions);
+currentSessionIdx = 0;
+renderSessionList();
+loadChat();
+alert('Selected chat(s) deleted.');
+}
+
+// Corrected toggleConsole function
+function toggleConsole(consoleId) {
+const section = document.getElementById(consoleId);
+if (!section) return;
+section.classList.toggle('open');
+}
+
+// Ensure your HTML headers call this function correctly, for example:
+// <div class="console-header" onclick="toggleConsole('owner-console')">Owner Console</div>
+// <div id="owner-console" class="console-section hidden">
+// <!-- console content -->
+// </div>
+
+// Rest of your existing code continues...
+// ... (rest of your code)
+</script>
+</body>
+</html>
+Please replace your current script section with this full version. The key change is the toggleConsole function, which now toggles the 'open' class to show or hide the console content. Make sure your HTML headers call this function with the correct console ID, like:
+
+<div class="console-header" onclick="toggleConsole('owner-console')">Owner Console</div>
+<div id="owner-console" class="console-section hidden">
+<!-- console content -->
+</div>
